@@ -1,4 +1,4 @@
-# Plasma Cut Calibration
+# Plasma Cut Calibration with QTPlasmac
 
 Classic test cut file(s) for dialing in (calibrating) your plasma cut speeds and heights.
 

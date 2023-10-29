@@ -2,14 +2,20 @@
 (Originally from Langmuir CrossFire)
 (This file is for testing cutting feed rates using variables in the values below)
 (You may need to adjust the pierce values to match your cutting machine and material thickness)
-#100 = 1500 (Starting Feed rate)
-#101 = 100 (Feed Rate Increase per test cut)
-#102 = 0 (Y Starting position)
-#103 = 6 (Y axis incremental move per cut)
-#104 = 100 (X axis length of test cut)
-#105 = 10 (Number of test lines to cut)
-#106 = 12 (Outside cut offset)
-#122 = #100 (feed rate increment total)
+#<start_fed_rate> = 1500 (Starting Feed rate)
+#<cut_height_start> = 0.8 (Starting cut height)
+#<cut_height_end> = 2.8   (Set to same a start to disable)
+;#<cut_height_end> = 0.8
+#<feed_increase> = 100 (Feed Rate Increase per test cut)
+#<y_start_pos> = 0 (Y Starting position)
+#<y_increment_per_cut> = 6 (Y axis incremental move per cut)
+#<x_axis_length_of_cut> = 100 (X axis length of test cut)
+#<num_test_cuts> = 5 (Number of test lines to cut)
+#<outside_offset> = 12 (Outside cut offset)
+#<reference_corner> = [#<outside_offset> / 2]
+#<current_feed> = #<start_fed_rate> (feed rate increment total)
+#<current_cut_height> = #<cut_height_start>
+#<cut_height_increase> = [[#<cut_height_end> - #<cut_height_start>] / #<num_test_cuts>]
 
 ;begin pre-amble
  G21 (units: metric)
@@ -29,27 +35,32 @@
 ;end material setup
 
 (2D Profile1)
-#102 = [#106] (Y start of first test cut)
-#104 = [#104 + #106] (X start of first test cut)
-o100 repeat [#105]
-G0 X[#106] Y[#102]
-M3 $0 S1 (plasma start)
-G1 X[#104] F[#122]
-M5 $0 (plasma end)
-#122 = [#122 - #101] (Incremental Feedrate)
-#102 = [#102 + #103] (Incremental Y Move)
-G0 X[#106] Y[#102]
+#<y_start_pos> = [#<outside_offset>] (Y start of first test cut)
+#<x_axis_length_of_cut> = [#<x_axis_length_of_cut> + #<outside_offset>] (X start of first test cut)
+o100 repeat [#<num_test_cuts>]
+    (setup cut height)
+    M150 P1 Q#<current_cut_height>
+    G0 X[#<outside_offset>] Y[#<y_start_pos>]
+    M3 $0 S1 (plasma start)
+    G1 X[#<x_axis_length_of_cut>] F[#<current_feed>]
+    M5 $0 (plasma end)
+    #<current_feed> = [#<current_feed> - #<feed_increase>] (Incremental Feedrate)
+    #<current_cut_height> = [#<current_cut_height> + #<cut_height_increase>] (Increment cut height)
+    #<y_start_pos> = [#<y_start_pos> + #<y_increment_per_cut>] (Incremental Y Move)
+    G0 X[#<outside_offset>] Y[#<y_start_pos>]
 o100 endrepeat
 
 (Cutout)
-#107 = [#104 + #106] (Length of cutout)
-#108 = [[#103 * #105] + #103 + #106] (Height of cutout)
-G0 X-0.1 Y[#108]
+M150 P2 (reset back to normal material usage)
+#<cutout_length> = [#<x_axis_length_of_cut> + #<outside_offset>] (Length of cutout)
+#<cutout_height> = [[#<y_increment_per_cut> * #<num_test_cuts>] + #<y_increment_per_cut> + #<outside_offset>] (Height of cutout)
+G0 X0 Y[#<cutout_height>]
 M3 $0 S1 (plasma start)
-G1 X[#107] Y[#108] F[#100]
-X[#107] Y0
-X0 Y0
-X0 Y[#108]
+G1 X[#<cutout_length>] Y[#<cutout_height>] F[#<start_fed_rate>]
+X[#<cutout_length>] Y0
+X#<reference_corner> Y0
+X0 Y#<reference_corner>
+X0 Y[#<cutout_height>]
 M5 $0 (plasma end)
 
 M30 (End Of Program)

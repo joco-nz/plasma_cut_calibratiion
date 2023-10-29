@@ -77,13 +77,13 @@ o100 endrepeat
 M150 P2 (reset back to normal material usage)
 #<cutout_length> = [#<x_axis_length_of_cut> + #<outside_offset>] (Length of cutout)
 #<cutout_height> = [[#<y_increment_per_cut> * #<num_test_cuts>] + #<y_increment_per_cut> + #<outside_offset>] (Height of cutout)
-G0 X0 Y[#<cutout_height>]
+G0 X0 Y[#<cutout_height> * #<units_scale>]
 M3 $0 S1 (plasma start)
-G1 X[#<cutout_length>] Y[#<cutout_height>] F[#<start_fed_rate>]
-X[#<cutout_length>] Y0
+G1 X[#<cutout_length> * #<units_scale>] Y[#<cutout_height> * #<units_scale>] F[#<start_fed_rate> * #<units_scale>]
+X[#<cutout_length> * #<units_scale>] Y0
 X#<reference_corner> Y0
-X0 Y#<reference_corner>
-X0 Y[#<cutout_height>]
+X0 Y[#<reference_corner> * #<units_scale>]
+X0 Y[#<cutout_height> * #<units_scale>]
 M5 $0 (plasma end)
 
 M30 (End Of Program)

@@ -75,6 +75,7 @@ o100 endrepeat
 
 (Cutout)
 M150 P2 (reset back to normal material usage)
+F#<_hal[plasmac.cut-feed-rate]>  (reset feed back to plasmac)
 #<cutout_length> = [#<x_axis_length_of_cut> + #<outside_offset>] (Length of cutout)
 #<cutout_height> = [[#<y_increment_per_cut> * #<num_test_cuts>] + #<y_increment_per_cut> + #<outside_offset>] (Height of cutout)
 G0 X0 Y[#<cutout_height> * #<units_scale>]

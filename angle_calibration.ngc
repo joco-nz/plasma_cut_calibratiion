@@ -1,0 +1,104 @@
+(Calibration file for feeds and cut heigts.  Similar examples from)
+(from source like RodW and Langmuir CrossFire forum)
+(Setup for Linuxcnc QtPlasmac and requires the accompanying M150 python file)
+(Pierce height is taken from the ph in the qtplasmac magic comment for a temporary material)
+(adjust as needed.)
+(---- Principle of Operation ---)
+(Can test feed or cut height across a number of cuts. These tests can be combined or run separately.)
+(Feed Rate test starts at the HIGHEST speed and reduces each cut by a chosen amount.)
+(Cut Height test starts at the LOWEST point and increases in even amounts for each cut to the set end value.)
+(The test area cut out is based on the qtplasmac material magic comment values.)
+(The cutout has a chamfered corner to denote cut 1.)
+(As height control is an aspect being tested THC should be off.  The gcode does disable this.)
+(---- USAGE ----)
+(units_scale = Set the scale factor for mm or inch)
+(num_test_cuts = Set the number of test lines. If testing cut height the delta between start and)
+(                and end cut height is divided by this to get a height change per cut.)
+(                i.e. cut_height_start=0.8, cut_height_end=2.8, num_test_cuts=10)
+(                     [2.8-0.8]/10 = 0.2 change per cut)
+(start_fed_rate = Set the Production feed rate per cut charts or a heigher value)
+(feed_decrease = Set the amount you want the feed rate to drop on each test cut. 0 for no change)
+(cut_height_start = Set starting cut height, this should be the lowest height)
+(cut_height_end = Set the final cut height to end at)
+(feed_deacrease = Set the amount to reduce feed for each test cut)
+(---- USER SETTINGS ----)
+#<units_scale> = 1 (1 for mm and 25.4 for inch. Then set all relevant settings below in your units of choice)
+#<num_test_cuts> = 5 (Number of test lines to cut)
+#<start_fed_rate> = 8000 (Starting Feed rate)
+#<cut_height_start> = 2.0 (Starting cut height)
+;#<cut_height_end> = 3.8   (Set to same as cut_height_start to disable)
+#<cut_height_end> = 2.0
+#<feed_decrease> = 100 (Feed Rate Increase per test cut)
+#<angle_segment> = 12.5
+(---- SHOULD NOT NEED ADJUSTING BELOW THIS POINT ----)
+#<y_start_pos> = 0 (Y Starting position)
+#<y_increment_per_cut> = 6 (Y axis incremental move per cut)
+#<outside_offset> = 12 (Outside cut offset)
+#<reference_corner> = [#<outside_offset> / 2]
+#<current_feed> = #<start_fed_rate> (feed rate increment total)
+#<current_cut_height> = #<cut_height_start>
+#<cut_height_increase> = [[#<cut_height_end> - #<cut_height_start>] / #<num_test_cuts>]
+
+;begin pre-amble --- Do not change below here.
+ G21 (units: metric)
+ G40 (cutter compensation: off)
+ G90 (distance mode: absolute)
+ M52 P1 (adaptive feed: on)
+ M64 P2 (disabe THC)
+ M65 P3 (enable torch)
+ M68 E3 Q0 (velocity 100%)
+ G64 P0.254 Q0.025 (tracking tolerances: 0.254mm)
+;end pre-amble
+;
+;begin material setup
+ T0 M6 (select plasma tool)
+ G43 H0 (apply tool offsets)
+ (o=0,kw=0.7, ph=4.0, pd=0, ch=2.0, fr=7000, th=0, cv=99, pe=0, jh=0, jd=0)
+;end material setup
+
+(2D Profile1)
+#<y_start_pos> = [#<outside_offset>] (Y start of first test cut)
+o100 repeat [#<num_test_cuts>]
+    (setup cut height)
+    M150 P1 Q[#<current_cut_height> * #<units_scale>]
+    G0 X[#<outside_offset> * #<units_scale>] Y[#<y_start_pos> * #<units_scale>]
+    M3 $0 S1 (plasma start)
+    G91 (distance mode: relative)
+    G1 X[#<angle_segment> * #<units_scale>] F[#<current_feed> * #<units_scale>]
+    X[#<angle_segment> * #<units_scale>] Y[#<angle_segment> * #<units_scale>]
+    X[#<angle_segment> * #<units_scale>] Y-[#<angle_segment> * #<units_scale>]
+    (Create an arc)
+    G2 X[#<angle_segment> * #<units_scale>] Y0 I[[#<angle_segment> * #<units_scale>]/2] J0
+    ;X[#<angle_segment> * #<units_scale>]
+    G1 X[#<angle_segment> * #<units_scale>] Y[#<angle_segment> * #<units_scale>]
+    X[#<angle_segment> * #<units_scale>] Y-[#<angle_segment> * #<units_scale>]
+    (Create an arc)
+    G2 X[#<angle_segment> * #<units_scale>] I[[#<angle_segment> * #<units_scale>]/2]
+    ;X[#<angle_segment> * #<units_scale>]
+    G1 X[#<angle_segment> * #<units_scale>] Y[#<angle_segment> * #<units_scale>]
+    X[#<angle_segment> * #<units_scale>] Y-[#<angle_segment> * #<units_scale>]
+    X[#<angle_segment> * #<units_scale>]
+    G90 (distance mode: absolute)
+    M5 $0 (plasma end)
+    #<current_feed> = [#<current_feed> - #<feed_decrease>] (Incremental Feedrate)
+    #<current_cut_height> = [#<current_cut_height> + #<cut_height_increase>] (Increment cut height)
+    #<y_start_pos> = [#<y_start_pos> + #<y_increment_per_cut>] (Incremental Y Move)
+    G0 X[#<outside_offset> * #<units_scale>] Y[#<y_start_pos> * #<units_scale>]
+o100 endrepeat
+
+(Cutout)
+M150 P2 (reset back to normal material usage)
+F#<_hal[plasmac.cut-feed-rate]>  (reset feed back to plasmac)
+#<cutout_length> = [[#<angle_segment>*10] + [#<outside_offset>*2]] (Length of cutout)
+;#<cutout_height> = [[#<y_increment_per_cut> * #<num_test_cuts>] + #<angle_segment> + #<y_increment_per_cut> + #<outside_offset>] (Height of cutout)
+#<cutout_height> = [[#<y_increment_per_cut> * #<num_test_cuts>] + #<angle_segment> + #<outside_offset>] (Height of cutout)
+G0 X0 Y[#<cutout_height> * #<units_scale>]
+M3 $0 S1 (plasma start)
+G1 X[#<cutout_length> * #<units_scale>] Y[#<cutout_height> * #<units_scale>] F[#<start_fed_rate> * #<units_scale>]
+X[#<cutout_length> * #<units_scale>] Y0
+X#<reference_corner> Y0
+X0 Y[#<reference_corner> * #<units_scale>]
+X0 Y[#<cutout_height> * #<units_scale>]
+M5 $0 (plasma end)
+
+M30 (End Of Program)
